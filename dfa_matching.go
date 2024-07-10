@@ -2,6 +2,7 @@ package sensitive_word_matching
 
 import (
 	"fmt"
+	"sync"
 	"unicode"
 )
 
@@ -11,6 +12,7 @@ type DfaMatching struct {
 	acceptStates     map[string]struct{}        //每个关键词终态
 	alphabet         map[rune]struct{}          //存储所有字符集
 	transitionStates map[string]map[rune]string //存储状态转移
+	mu               sync.RWMutex
 }
 
 // 动态生成支持的字符集
@@ -48,6 +50,9 @@ func NewDfaMatching() *DfaMatching {
 }
 
 func (d *DfaMatching) GenerateSensitiveKeyWords(keyWords []string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	for _, keyword := range keyWords {
 		state := StartState
 		for _, char := range keyword {
@@ -67,6 +72,8 @@ func (d *DfaMatching) GenerateSensitiveKeyWords(keyWords []string) {
 }
 
 func (d *DfaMatching) generateFailAlphabet() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	// 添加失败状态，如果已经存在则不添加
 	if _, exists := d.states["error"]; !exists {
 		d.states["error"] = struct{}{}
@@ -87,6 +94,9 @@ func (d *DfaMatching) generateFailAlphabet() {
 }
 
 func (d *DfaMatching) IsMatching(keyword string) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	currentState := d.startState
 	for _, char := range keyword {
 		if _, ok := d.alphabet[char]; !ok {
